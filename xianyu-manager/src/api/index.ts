@@ -10,6 +10,10 @@ export const accountApi = {
   add: (data: { nickname: string; cookie: string }) =>
     http.post<any, ApiResponse<XianyuAccount>>('/api/accounts', data),
 
+  /** 添加账号（账号密码方式） */
+  addByPassword: (data: { nickname: string; phone: string; password: string }) =>
+    http.post<any, ApiResponse<XianyuAccount>>('/api/accounts/login', data),
+
   /** 删除账号 */
   remove: (id: number) =>
     http.delete<any, ApiResponse<null>>(`/api/accounts/${id}`),

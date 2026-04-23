@@ -1,9 +1,15 @@
 // ======================== 账号管理 ========================
+export type LoginType = 'cookie' | 'password'
+
 export interface XianyuAccount {
   id: number
   nickname: string
   avatar?: string
   cookie: string
+  /** 登录方式：cookie 或 password */
+  loginType: LoginType
+  /** 账号密码登录时使用的手机号/用户名（脱敏展示） */
+  loginPhone?: string
   status: 'online' | 'offline' | 'expired' | 'error'
   goodsCount: number
   todayMessages: number
