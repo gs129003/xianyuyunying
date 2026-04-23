@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import type { Product, ProductStatus, ProductSource } from '../types'
 import { productApi } from '../api'
+import { useToast } from '../components/Toast'
 
 const MOCK_PRODUCTS: Product[] = [
   { id: 1, accountId: 1, name: 'AJ 1 Low 白蓝配色', price: 850, originalPrice: 920, profitRate: 8, category: '运动鞋', desc: '全新未穿，原盒附赠鞋袋', images: [], status: 'published', source: 'taobao', sourceUrl: 'https://item.taobao.com/xxx', sourcePrice: 780, stock: 3, soldCount: 2, createdAt: '2026-04-24 01:30', publishedAt: '2026-04-24 02:00' },
@@ -32,6 +33,7 @@ const sourceMap: Record<ProductSource, { label: string; color: string }> = {
 type TabStatus = 'all' | ProductStatus
 
 export default function ProductManage() {
+  const toast = useToast()
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS)
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState<TabStatus>('all')
@@ -67,25 +69,42 @@ export default function ProductManage() {
   const handlePublish = async (id: number) => {
     try { await productApi.publish(id) } catch {}
     setProducts(prev => prev.map(p => p.id === id ? { ...p, status: 'published', publishedAt: new Date().toLocaleString() } : p))
+    const p = products.find(p => p.id === id)
+    toast.success(`商品 "${p?.name}" 已上架`)
   }
 
   const handleOffline = async (id: number) => {
     try { await productApi.toggleStatus(id, 'offline') } catch {}
     setProducts(prev => prev.map(p => p.id === id ? { ...p, status: 'offline' } : p))
+    const p = products.find(p => p.id === id)
+    toast.success(`商品 "${p?.name}" 已下架`)
   }
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('确认删除该商品？')) return
+    const p = products.find(p => p.id === id)
+    if (!window.confirm(`确认删除商品 "${p?.name}"？删除后不可恢复。`)) return
     try { await productApi.remove(id) } catch {}
     setProducts(prev => prev.filter(p => p.id !== id))
     setSelectedIds(prev => { const s = new Set(prev); s.delete(id); return s })
+    toast.success(`商品 "${p?.name}" 已删除`)
   }
 
   const handleBatchPublish = async () => {
     const ids = Array.from(selectedIds)
-    try { await productApi.batchPublish(ids) } catch {}
-    setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, status: 'published' } : p))
-    setSelectedIds(new Set())
+    if (ids.length === 0) {
+      toast.warning('请先选择要上架的商品')
+      return
+    }
+    try {
+      await productApi.batchPublish(ids)
+      setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, status: 'published' } : p))
+      setSelectedIds(new Set())
+      toast.success(`已批量上架 ${ids.length} 件商品`)
+    } catch {
+      setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, status: 'published' } : p))
+      setSelectedIds(new Set())
+      toast.success(`已批量上架 ${ids.length} 件商品（离线模式）`)
+    }
   }
 
   const tabs: { key: TabStatus; label: string }[] = [

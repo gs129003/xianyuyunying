@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, TrendingUp, Link2, Package, Users,
-  Bot, BookOpen, FileText, RefreshCw, Fish
+  Bot, BookOpen, FileText, RefreshCw, Fish, PlusSquare
 } from 'lucide-react'
 
 const navGroups = [
@@ -10,6 +10,7 @@ const navGroups = [
     items: [
       { to: '/dashboard', icon: LayoutDashboard, label: '控制台' },
       { to: '/hot-search', icon: TrendingUp, label: '热销品搜索' },
+      { to: '/auto-list', icon: PlusSquare, label: '自动上新品' },
       { to: '/link-import', icon: Link2, label: '链接导入上新' },
     ],
   },

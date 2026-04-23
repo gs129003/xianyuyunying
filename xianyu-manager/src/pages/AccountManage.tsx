@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import type { XianyuAccount } from '../types'
 import { accountApi } from '../api'
+import { useToast } from '../components/Toast'
 
 /* ─── Mock data (used when backend is unavailable) ─── */
 const MOCK_ACCOUNTS: XianyuAccount[] = [
@@ -60,6 +61,7 @@ function CookieInput({ value, onChange }: { value: string; onChange: (v: string)
 }
 
 export default function AccountManage() {
+  const toast = useToast()
   const [accounts, setAccounts] = useState<XianyuAccount[]>(MOCK_ACCOUNTS)
   const [loading, setLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -84,11 +86,15 @@ export default function AccountManage() {
   useEffect(() => { fetchAccounts() }, [])
 
   const handleAdd = async () => {
-    if (!form.nickname.trim() || !form.cookie.trim()) return
+    if (!form.nickname.trim() || !form.cookie.trim()) {
+      toast.warning('请填写账号昵称和 Cookie')
+      return
+    }
     try {
       const res = await accountApi.add(form)
       const added = res?.data ?? { id: Date.now(), ...form, status: 'offline', goodsCount: 0, todayMessages: 0, totalMessages: 0, autoReply: false, createdAt: new Date().toLocaleString(), lastActiveAt: '刚刚' }
       setAccounts(prev => [added as XianyuAccount, ...prev])
+      toast.success(`账号 "${form.nickname}" 添加成功`)
     } catch {
       const newAcc: XianyuAccount = {
         id: Date.now(), nickname: form.nickname, cookie: form.cookie,
@@ -96,20 +102,24 @@ export default function AccountManage() {
         autoReply: false, createdAt: new Date().toLocaleString(), lastActiveAt: '刚刚',
       }
       setAccounts(prev => [newAcc, ...prev])
+      toast.success(`账号 "${form.nickname}" 添加成功（离线模式）`)
     }
     setForm({ nickname: '', cookie: '' })
     setShowAddModal(false)
   }
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('确认删除该账号？')) return
+    const acc = accounts.find(a => a.id === id)
+    if (!window.confirm(`确认删除账号 "${acc?.nickname}"？删除后不可恢复。`)) return
     try { await accountApi.remove(id) } catch {}
     setAccounts(prev => prev.filter(a => a.id !== id))
+    toast.success(`账号 "${acc?.nickname}" 已删除`)
   }
 
   const handleToggleReply = async (id: number, enabled: boolean) => {
     try { await accountApi.toggleAutoReply(id, enabled) } catch {}
     setAccounts(prev => prev.map(a => a.id === id ? { ...a, autoReply: enabled } : a))
+    toast.success(`自动回复已${enabled ? '开启' : '关闭'}`)
   }
 
   const handleRefresh = async (id: number) => {
@@ -118,19 +128,25 @@ export default function AccountManage() {
       const res = await accountApi.refresh(id)
       if (res?.data) setAccounts(prev => prev.map(a => a.id === id ? res.data : a))
       else setAccounts(prev => prev.map(a => a.id === id ? { ...a, status: 'online', lastActiveAt: '刚刚' } : a))
+      toast.success('账号状态已刷新')
     } catch {
       setAccounts(prev => prev.map(a => a.id === id ? { ...a, lastActiveAt: '刚刚' } : a))
+      toast.error('刷新失败，请检查网络连接')
     } finally {
       setRefreshingId(null)
     }
   }
 
   const handleUpdateCookie = async (id: number) => {
-    if (!newCookie.trim()) return
+    if (!newCookie.trim()) {
+      toast.warning('请输入新的 Cookie 内容')
+      return
+    }
     try { await accountApi.updateCookie(id, newCookie) } catch {}
     setAccounts(prev => prev.map(a => a.id === id ? { ...a, cookie: newCookie, status: 'offline' } : a))
     setShowCookieModal(null)
     setNewCookie('')
+    toast.success('Cookie 更新成功')
   }
 
   const online = accounts.filter(a => a.status === 'online').length
