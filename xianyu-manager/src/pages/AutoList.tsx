@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { PlusSquare, Upload, CheckCircle, Clock, XCircle, Zap, Edit3, Trash2 } from 'lucide-react'
+import { useToast } from '../components/Toast'
 
 interface Product {
   id: number
@@ -26,6 +27,7 @@ const statusInfo = {
 }
 
 export default function AutoList() {
+  const toast = useToast()
   const [products, setProducts] = useState<Product[]>(INIT_PRODUCTS)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', price: '', category: '运动鞋', desc: '' })
@@ -34,7 +36,10 @@ export default function AutoList() {
   const categories = ['运动鞋', '数码', '手机', '家电', '服饰', '手办模型', '箱包', '户外', '游戏']
 
   const handleAdd = () => {
-    if (!form.name || !form.price) return
+    if (!form.name || !form.price) {
+      toast.warning('请填写商品名称和售价')
+      return
+    }
     const newP: Product = {
       id: Date.now(),
       name: form.name,
@@ -48,30 +53,43 @@ export default function AutoList() {
     setProducts(prev => [newP, ...prev])
     setForm({ name: '', price: '', category: '运动鞋', desc: '' })
     setShowForm(false)
+    toast.success(`"${form.name}" 已添加`)
   }
 
   const handleUpload = (id: number) => {
     setProducts(prev => prev.map(p => p.id === id ? { ...p, status: 'uploading' } : p))
+    toast.info('正在上传商品...')
     setTimeout(() => {
       setProducts(prev => prev.map(p => p.id === id ? { ...p, status: 'done' } : p))
+      toast.success('商品上传成功')
     }, 2000 + Math.random() * 1000)
   }
 
   const handleBatchUpload = () => {
     const pending = products.filter(p => p.status === 'pending')
-    if (pending.length === 0) return
+    if (pending.length === 0) {
+      toast.warning('没有待上新的商品')
+      return
+    }
     setBatchLoading(true)
+    toast.info(`开始批量上传 ${pending.length} 个商品...`)
     setProducts(prev => prev.map(p => p.status === 'pending' ? { ...p, status: 'uploading' } : p))
     pending.forEach((p, i) => {
       setTimeout(() => {
         setProducts(prev => prev.map(pp => pp.id === p.id ? { ...pp, status: 'done' } : pp))
-        if (i === pending.length - 1) setBatchLoading(false)
+        if (i === pending.length - 1) {
+          setBatchLoading(false)
+          toast.success(`批量上传完成，共 ${pending.length} 个商品`)
+        }
       }, (i + 1) * 1500)
     })
   }
 
   const handleDelete = (id: number) => {
-    setProducts(prev => prev.filter(p => p.id !== id))
+    const p = products.find(x => x.id === id)
+    if (!window.confirm(`确定删除商品"${p?.name}"吗？`)) return
+    setProducts(prev => prev.filter(x => x.id !== id))
+    toast.success(`"${p?.name}" 已删除`)
   }
 
   const done = products.filter(p => p.status === 'done').length

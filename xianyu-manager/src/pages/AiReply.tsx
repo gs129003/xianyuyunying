@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { aiApi } from '../api'
 import type { AiProvider, ReplyRule } from '../types'
+import { useToast } from '../components/Toast'
 
 /* ─── AI Provider configs ─── */
 const AI_PROVIDERS: { id: AiProvider; name: string; models: string[]; baseUrl: string; color: string }[] = [
@@ -34,6 +35,7 @@ const MOCK_RULES: ReplyRule[] = [
 ]
 
 export default function AiReply() {
+  const toast = useToast()
   const [tab, setTab] = useState<'rules' | 'config' | 'test'>('config')
   const [provider, setProvider] = useState<AiProvider>('openai')
   const [apiKey, setApiKey] = useState('')
@@ -69,7 +71,7 @@ export default function AiReply() {
     } catch {}
     await new Promise(r => setTimeout(r, 600))
     setSaving(false)
-    alert('✅ AI 配置已保存！')
+    toast.success('AI 配置已保存')
   }
 
   const handleTest = async () => {
@@ -79,6 +81,7 @@ export default function AiReply() {
     try {
       const res = await aiApi.testConfig(testMsg)
       setTestReply(res?.data?.reply ?? '（连接后端后可获得真实回复）')
+      toast.success('AI 回复生成成功')
     } catch {
       // Mock reply
       const mocks = [
@@ -98,7 +101,10 @@ export default function AiReply() {
   }
 
   const handleSaveRule = () => {
-    if (!editRule.replyContent && !editRule.useAi) return
+    if (!editRule.replyContent && !editRule.useAi) {
+      toast.warning('请填写回复内容或开启 AI 智能回复')
+      return
+    }
     const rule: ReplyRule = {
       id: Date.now(),
       type: editRule.type || 'keyword',
@@ -114,13 +120,19 @@ export default function AiReply() {
     setShowAddRule(false)
     setEditRule({ type: 'keyword', keywords: [], replyContent: '', useAi: false, priority: 10, enabled: true })
     setKeywordInput('')
+    toast.success('回复规则已添加')
   }
 
   const handleToggleRule = (id: number, enabled: boolean) => {
     setRules(prev => prev.map(r => r.id === id ? { ...r, enabled } : r))
+    toast.success(enabled ? '规则已启用' : '规则已禁用')
   }
 
-  const handleDeleteRule = (id: number) => setRules(prev => prev.filter(r => r.id !== id))
+  const handleDeleteRule = (id: number) => {
+    if (!window.confirm('确定删除该回复规则吗？')) return
+    setRules(prev => prev.filter(r => r.id !== id))
+    toast.success('规则已删除')
+  }
 
   const TABS = [
     { key: 'config', label: 'AI 模型配置', icon: Settings },

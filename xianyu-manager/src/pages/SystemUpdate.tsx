@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { RefreshCw, Download, CheckCircle, AlertTriangle, Info, ExternalLink, GitBranch } from 'lucide-react'
 
-const CURRENT_VERSION = 'v1.0.0'
+const CURRENT_VERSION = 'v1.01'
 const UPDATE_REPO = 'gs129003/xianyuyunying'
 const UPDATE_URL = `https://api.github.com/repos/${UPDATE_REPO}/releases/latest`
 
@@ -17,6 +17,7 @@ interface Release {
 type CheckState = 'idle' | 'checking' | 'latest' | 'available' | 'updating' | 'done' | 'error'
 
 const updateLogs = [
+  { version: 'v1.01', date: '2026-04-24', type: 'feature', desc: '完善用户菜单系统（资料编辑、修改密码、通知中心）；所有操作按钮接入 Toast 通知反馈；一键上新功能接入 API' },
   { version: 'v1.0.0', date: '2026-04-24', type: 'release', desc: '初始版本发布，包含热销品搜索、自动上新、文档内嵌等核心功能' },
 ]
 
@@ -49,9 +50,9 @@ export default function SystemUpdate() {
     } catch (e: any) {
       // If network fails, simulate a check result for demo
       setRelease({
-        tag_name: 'v1.0.0',
-        name: '闲鱼运营管理系统 v1.0.0',
-        body: '- 热销品自动搜索\n- 商品自动上新\n- 内嵌文档系统\n- 自动更新检测',
+        tag_name: 'v1.01',
+        name: '闲鱼运营管理系统 v1.01',
+        body: '- 完善用户菜单（资料编辑、修改密码、通知中心）\n- 全局 Toast 通知反馈系统\n- 一键上新接入 API\n- Dashboard 数据动态加载\n- 各页面操作体验优化',
         published_at: '2026-04-24T00:00:00Z',
         html_url: `https://github.com/${UPDATE_REPO}/releases/latest`,
         assets: [],

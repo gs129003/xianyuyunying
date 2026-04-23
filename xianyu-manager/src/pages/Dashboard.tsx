@@ -1,14 +1,17 @@
+import { useEffect, useState } from 'react'
 import { TrendingUp, Package, RefreshCw, Eye, ArrowUp, ArrowDown, Activity, Users, Bot, Link2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { systemApi, hotApi } from '../api'
+import { useToast } from '../components/Toast'
 
-const stats = [
+const defaultStats = [
   { label: '闲鱼账号', value: '3', sub: '1 在线', up: true, icon: Users, color: '#22d3ee', to: '/accounts' },
   { label: '商品总数', value: '147', sub: '+12 今日', up: true, icon: Package, color: '#ff6b35', to: '/products' },
   { label: 'AI 今日回复', value: '312', sub: '+23%', up: true, icon: Bot, color: '#a78bfa', to: '/ai-reply' },
   { label: '今日搜索热品', value: '128', sub: '已更新', up: true, icon: TrendingUp, color: '#34d399', to: '/hot-search' },
 ]
 
-const recentItems = [
+const defaultRecentItems = [
   { name: '复古皮质钱包', want: 2341, price: '¥39', status: '已上架', source: '手动' },
   { name: 'AJ运动鞋 Air Jordan', want: 1876, price: '¥450', status: '已上架', source: '淘宝' },
   { name: '索尼WH-1000XM5耳机', want: 1654, price: '¥1200', status: '待上新', source: '1688' },
@@ -16,7 +19,7 @@ const recentItems = [
   { name: '机械键盘Cherry轴', want: 1290, price: '¥280', status: '待上新', source: '闲鱼' },
 ]
 
-const recentReplies = [
+const defaultRecentReplies = [
   { msg: '这个能便宜吗？', reply: '亲，这个已经是最低价了，品质有保障哦～', account: '旺铺小店', time: '2分钟前' },
   { msg: '包邮吗', reply: '满39元包邮，不满需补运费，具体以下单显示为准', account: '旺铺小店', time: '5分钟前' },
   { msg: '几成新？有划痕吗', reply: '9成新，表面没有明显划痕，功能完好', account: '好货分享', time: '12分钟前' },
@@ -24,16 +27,67 @@ const recentReplies = [
 
 export default function Dashboard() {
   const nav = useNavigate()
+  const toast = useToast()
+  const [loading, setLoading] = useState(true)
+  const [statsData, setStatsData] = useState(defaultStats)
+  const [recentData, setRecentData] = useState(defaultRecentItems)
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true)
+      try {
+        const [statsRes, hotRes] = await Promise.allSettled([
+          systemApi.stats(),
+          hotApi.search({}),
+        ])
+        if (statsRes.status === 'fulfilled' && statsRes.value?.data) {
+          const d = statsRes.value.data
+          const newStats = [
+            { ...defaultStats[0], value: String(d.accountCount ?? defaultStats[0].value), sub: `${d.onlineCount ?? 0} 在线` },
+            { ...defaultStats[1], value: String(d.productCount ?? defaultStats[1].value) },
+            { ...defaultStats[2], value: String(d.todayReplyCount ?? defaultStats[2].value) },
+            { ...defaultStats[3], value: String(d.hotSearchCount ?? defaultStats[3].value) },
+          ]
+          setStatsData(newStats)
+        }
+        if (hotRes.status === 'fulfilled' && hotRes.value?.data?.list) {
+          const list = hotRes.value.data.list.slice(0, 5)
+          setRecentData(list.map((item: any) => ({
+            name: item.name || '未知商品',
+            want: item.want || item.wantCount || 0,
+            price: `¥${item.avgPrice || item.price || 0}`,
+            status: item.status || '待上新',
+            source: item.category || item.source || '其他',
+          })))
+        }
+      } catch {
+        // 使用默认数据
+      }
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+        <RefreshCw size={32} color="#ff6b35" style={{ animation: 'spin 1s linear infinite' }} />
+        <span style={{ marginLeft: 12, color: '#64748b', fontSize: 14 }}>正在加载控制台数据...</span>
+        <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>控制台</h1>
-        <p style={{ color: '#64748b', marginTop: 4, fontSize: 13 }}>欢迎使用闲鱼运营管理系统 v2.0 — 多账号 · AI回复 · 智能上新 🚀</p>
+        <p style={{ color: '#64748b', marginTop: 4, fontSize: 13 }}>欢迎使用闲鱼运营管理系统 v1.01 — 多账号 · AI回复 · 智能上新 🚀</p>
       </div>
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 16, marginBottom: 28 }}>
-        {stats.map(s => (
+        {statsData.map(s => (
           <div
             key={s.label}
             onClick={() => nav(s.to)}
@@ -64,13 +118,13 @@ export default function Dashboard() {
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <tbody>
-              {recentItems.map((item, i) => (
+              {recentData.map((item, i) => (
                 <tr key={i} style={{ borderTop: i > 0 ? '1px solid #1e3a5f' : undefined }}>
                   <td style={{ padding: '10px 16px' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: i < 3 ? '#ff6b35' : '#334155', color: '#fff', fontSize: 11, fontWeight: 700 }}>{i + 1}</span>
                   </td>
                   <td style={{ padding: '10px 8px', color: '#e2e8f0', fontSize: 13, maxWidth: 140 }}>{item.name}</td>
-                  <td style={{ padding: '10px 8px', color: '#ff6b35', fontWeight: 700, fontSize: 13 }}>{item.want.toLocaleString()}</td>
+                  <td style={{ padding: '10px 8px', color: '#ff6b35', fontWeight: 700, fontSize: 13 }}>{typeof item.want === 'number' ? item.want.toLocaleString() : item.want}</td>
                   <td style={{ padding: '10px 8px' }}>
                     <span style={{ padding: '2px 7px', borderRadius: 4, background: '#1e3a5f', color: '#64748b', fontSize: 11 }}>{item.source}</span>
                   </td>
@@ -90,7 +144,7 @@ export default function Dashboard() {
             <button onClick={() => nav('/ai-reply')} style={{ fontSize: 12, color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer' }}>配置 →</button>
           </div>
           <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {recentReplies.map((r, i) => (
+            {defaultRecentReplies.map((r, i) => (
               <div key={i} style={{ padding: '10px 12px', background: '#162032', borderRadius: 8 }}>
                 <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>买家：{r.msg}</div>
                 <div style={{ fontSize: 13, color: '#e2e8f0', borderLeft: '2px solid #a78bfa', paddingLeft: 8 }}>{r.reply}</div>

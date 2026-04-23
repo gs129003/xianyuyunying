@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Search, TrendingUp, RefreshCw, Filter, Star } from 'lucide-react'
+import { Search, TrendingUp, RefreshCw, Filter, Star, Plus } from 'lucide-react'
+import { hotApi, productApi } from '../api'
+import { useToast } from '../components/Toast'
 
 interface HotItem {
   rank: number
@@ -27,33 +29,70 @@ const MOCK_DATA: HotItem[] = [
 const CATEGORIES = ['全部', '运动鞋', '数码', '手机', '家电', '服饰', '箱包', '手办模型', '户外', '游戏', '数码外设']
 
 export default function HotSearch() {
+  const toast = useToast()
   const [keyword, setKeyword] = useState('')
   const [category, setCategory] = useState('全部')
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<HotItem[]>(MOCK_DATA)
   const [lastUpdate, setLastUpdate] = useState('刚刚')
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setLoading(true)
-    setTimeout(() => {
+    try {
+      const res = await hotApi.search({ keyword, category: category === '全部' ? undefined : category })
+      if (res?.data?.list) {
+        setData(res.data.list.map((item: any, i: number) => ({
+          rank: i + 1, name: item.name, want: item.want || item.wantCount || 0,
+          avgPrice: item.avgPrice || '¥0', category: item.category || '其他',
+          trend: item.trend || 'up', score: item.score || 80,
+        })))
+        toast.success(`搜索完成，找到 ${res.data.list.length} 条结果`)
+      } else {
+        const filtered = MOCK_DATA.filter(item => {
+          const matchKw = !keyword || item.name.includes(keyword)
+          const matchCat = category === '全部' || item.category === category
+          return matchKw && matchCat
+        })
+        setData(filtered)
+      }
+    } catch {
       const filtered = MOCK_DATA.filter(item => {
         const matchKw = !keyword || item.name.includes(keyword)
         const matchCat = category === '全部' || item.category === category
         return matchKw && matchCat
       })
       setData(filtered)
-      setLoading(false)
-      setLastUpdate('刚刚')
-    }, 1200)
+    }
+    setLoading(false)
+    setLastUpdate('刚刚')
   }
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setLoading(true)
+    try {
+      await hotApi.refresh()
+      toast.success('热销品数据已刷新')
+    } catch {}
     setTimeout(() => {
       setData([...MOCK_DATA].sort(() => Math.random() - 0.5).slice(0, 10))
       setLoading(false)
       setLastUpdate('刚刚')
     }, 1500)
+  }
+
+  const handleAddProduct = async (item: HotItem) => {
+    try {
+      await productApi.create({
+        name: item.name,
+        price: Number(item.avgPrice.replace(/[¥,]/g, '')) || 0,
+        category: item.category,
+        source: 'hot-search',
+        status: 'pending',
+      })
+      toast.success(`"${item.name}" 已加入商品库`)
+    } catch {
+      toast.error('添加失败，请重试')
+    }
   }
 
   const trendColor = (t: string) => t === 'up' ? '#34d399' : t === 'new' ? '#a78bfa' : '#f87171'
@@ -207,17 +246,23 @@ export default function HotSearch() {
                     </div>
                   </td>
                   <td style={{ padding: '13px 16px' }}>
-                    <button style={{
-                      padding: '5px 14px',
-                      background: 'linear-gradient(90deg,#ff6b35,#ff8c42)',
-                      border: 'none',
-                      borderRadius: 6,
-                      color: '#fff',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}>
-                      一键上新
+                    <button
+                      onClick={() => handleAddProduct(item)}
+                      style={{
+                        padding: '5px 14px',
+                        background: 'linear-gradient(90deg,#ff6b35,#ff8c42)',
+                        border: 'none',
+                        borderRadius: 6,
+                        color: '#fff',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <Plus size={12} /> 一键上新
                     </button>
                   </td>
                 </tr>

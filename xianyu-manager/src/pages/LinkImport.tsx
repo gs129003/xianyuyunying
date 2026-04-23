@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import type { ParsedProduct, ProductSource } from '../types'
 import { parseApi, productApi } from '../api'
+import { useToast } from '../components/Toast'
 
 /* ─── Platform detection ─── */
 const PLATFORMS: { id: ProductSource; name: string; color: string; patterns: RegExp[] }[] = [
@@ -69,6 +70,7 @@ interface ImportTask {
 }
 
 export default function LinkImport() {
+  const toast = useToast()
   const [inputUrl, setInputUrl] = useState('')
   const [tasks, setTasks] = useState<ImportTask[]>([])
   const [batchUrls, setBatchUrls] = useState('')
@@ -120,11 +122,16 @@ export default function LinkImport() {
 
   const handleBatchImport = () => {
     const urls = batchUrls.split('\n').map(u => u.trim()).filter(Boolean)
+    if (urls.length === 0) {
+      toast.warning('请输入要导入的链接')
+      return
+    }
     urls.forEach((url, i) => {
       const t = addTask(url)
       if (t) setTimeout(() => parseTask(t), i * 300)
     })
     setBatchUrls('')
+    toast.info(`开始批量解析 ${urls.length} 条链接`)
   }
 
   const handleAddToProducts = async (task: ImportTask) => {
@@ -144,15 +151,25 @@ export default function LinkImport() {
       })
     } catch {}
     updateTask(task.id, { status: 'done', result: { ...task.result!, price: task.finalPrice } })
-    alert('✅ 已添加到商品管理！')
+    toast.success(`"${task.result?.name}" 已加入商品库`)
   }
 
   const handleBatchAddAll = async () => {
     const done = tasks.filter(t => t.status === 'done' && t.result)
-    for (const t of done) await handleAddToProducts(t)
+    if (done.length === 0) {
+      toast.warning('没有可加入的商品')
+      return
+    }
+    toast.info(`正在添加 ${done.length} 个商品到商品库...`)
+    const results = await Promise.allSettled(done.map(t => handleAddToProducts(t)))
+    const successCount = results.filter(r => r.status === 'fulfilled').length
+    toast.success(`批量添加完成，成功 ${successCount} 个`)
   }
 
-  const handleRemove = (id: number) => setTasks(prev => prev.filter(t => t.id !== id))
+  const handleRemove = (id: number) => {
+    setTasks(prev => prev.filter(t => t.id !== id))
+    toast.info('已移除解析记录')
+  }
 
   const doneCount = tasks.filter(t => t.status === 'done').length
   const parsingCount = tasks.filter(t => t.status === 'parsing').length

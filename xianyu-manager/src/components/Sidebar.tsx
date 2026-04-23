@@ -51,7 +51,7 @@ export default function Sidebar({ open }: { open: boolean }) {
         </div>
         <div>
           <div style={{ fontWeight: 700, fontSize: 15, color: '#f1f5f9' }}>闲鱼运营</div>
-          <div style={{ fontSize: 11, color: '#64748b' }}>管理系统 v2.0.0</div>
+          <div style={{ fontSize: 11, color: '#64748b' }}>管理系统 v1.01</div>
         </div>
       </div>
 
